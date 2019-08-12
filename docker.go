@@ -53,4 +53,3 @@ func CreateNewContainer(image string,
 	fmt.Printf("Container %s is started", cont.ID)
 	return cont.ID, nil
 }
-

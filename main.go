@@ -15,7 +15,18 @@ func main() {
 	//	context.proxy.workspace,
 	//	cli)
 
-	NewDeployment(&context.kubernetes)
+	deployment, err := NewDeployment(&context.kubernetes)
+	if err != nil {
+		panic(err)
+	}
+
+	//deployment, err := GetDeployment(&context.kubernetes)
+	//_, err = GetDeploymentPods(&context.kubernetes, deployment)
+	err = PortForward(&context.kubernetes,
+		deployment)
+	if err != nil {
+		panic(err)
+	}
 
 	//TODO: Wait for SIGHUP and then clean up.
 }

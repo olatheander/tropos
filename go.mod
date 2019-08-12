@@ -1,4 +1,4 @@
-module github.com/olatheander/tropos-cli
+module github.com/olatheander/tropos
 
 go 1.12
 
