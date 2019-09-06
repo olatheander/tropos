@@ -1,7 +1,7 @@
 FROM ubuntu
 
 # Install SSHD
-RUN apt-get update && apt-get install -y openssh-server
+RUN apt-get update && apt-get install -y openssh-server sshfs
 RUN mkdir /var/run/sshd
 # Only allow key-based login
 RUN passwd -d root

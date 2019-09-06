@@ -1,7 +1,12 @@
 package main
 
+import (
+	"tropos/pkg/args"
+	"tropos/pkg/kubernetes"
+)
+
 func main() {
-	context, err := ParseArgs()
+	context, err := args.ParseArgs()
 	if err != nil {
 		panic(err)
 	}
@@ -15,14 +20,14 @@ func main() {
 	//	context.proxy.workspace,
 	//	cli)
 
-	deployment, err := NewDeployment(&context.kubernetes)
+	deployment, err := kubernetes.NewDeployment(&context.Kubernetes)
 	if err != nil {
 		panic(err)
 	}
 
 	//deployment, err := GetDeployment(&context.kubernetes)
 	//_, err = GetDeploymentPods(&context.kubernetes, deployment)
-	err = PortForward(&context.kubernetes,
+	err = kubernetes.PortForward(&context.Kubernetes,
 		deployment)
 	if err != nil {
 		panic(err)

@@ -1,4 +1,4 @@
-package main
+package kubernetes
 
 import (
 	"bytes"
@@ -17,10 +17,11 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	args "tropos/pkg/args"
 )
 
-func getDeployment(kube *Kubernetes) (*appsv1.Deployment, error) {
-	config, err := clientcmd.BuildConfigFromFlags("", kube.config)
+func getDeployment(kube *args.Kubernetes) (*appsv1.Deployment, error) {
+	config, err := clientcmd.BuildConfigFromFlags("", kube.Config)
 	if err != nil {
 		panic(err)
 	}
@@ -32,18 +33,18 @@ func getDeployment(kube *Kubernetes) (*appsv1.Deployment, error) {
 
 	namespace := getNamespace(kube)
 	deploymentsClient := clientSet.AppsV1().Deployments(namespace)
-	return deploymentsClient.Get(kube.deploymentName, metav1.GetOptions{})
+	return deploymentsClient.Get(kube.DeploymentName, metav1.GetOptions{})
 }
 
 //NewDeployment create a new deployment
-func NewDeployment(kube *Kubernetes) (*appsv1.Deployment, error) {
+func NewDeployment(kube *args.Kubernetes) (*appsv1.Deployment, error) {
 	result, err := getDeployment(kube)
 	if err == nil {
-		fmt.Printf("Found existing deployment %s, reusing it.\n", kube.deploymentName)
+		fmt.Printf("Found existing deployment %s, reusing it.\n", kube.DeploymentName)
 		return result, err
 	}
 
-	config, err := clientcmd.BuildConfigFromFlags("", kube.config)
+	config, err := clientcmd.BuildConfigFromFlags("", kube.Config)
 	if err != nil {
 		panic(err)
 	}
@@ -58,32 +59,32 @@ func NewDeployment(kube *Kubernetes) (*appsv1.Deployment, error) {
 
 	deployment := &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: kube.deploymentName,
+			Name: kube.DeploymentName,
 		},
 		Spec: appsv1.DeploymentSpec{
 			Replicas: int32Ptr(1),
 			Selector: &metav1.LabelSelector{
 				MatchLabels: map[string]string{
-					"app": kube.deploymentName,
+					"app": kube.DeploymentName,
 				},
 			},
 			Template: apiv1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Labels: map[string]string{
-						"app": kube.deploymentName,
+						"app": kube.DeploymentName,
 					},
 				},
 				Spec: apiv1.PodSpec{
 					Containers: []apiv1.Container{
 						{
-							Name:  kube.deploymentName,
-							Image: kube.image,
-							ImagePullPolicy: apiv1.PullNever,	//TODO: remove, only added for Minikube development.
+							Name:  kube.DeploymentName,
+							Image: kube.Image,
+							//ImagePullPolicy: apiv1.PullNever,	//TODO: remove, only added for Minikube development.
 							Ports: []apiv1.ContainerPort{
 								{
 									Name:          "ssh",
 									Protocol:      apiv1.ProtocolTCP,
-									ContainerPort: kube.containerPort,
+									ContainerPort: kube.ContainerPort,
 								},
 							},
 							SecurityContext: &apiv1.SecurityContext{
@@ -112,10 +113,10 @@ func NewDeployment(kube *Kubernetes) (*appsv1.Deployment, error) {
 	return result, err
 }
 
-func getNamespace(kube *Kubernetes) string {
+func getNamespace(kube *args.Kubernetes) string {
 	var namespace string
-	if kube.namespace != "" {
-		namespace = kube.namespace
+	if kube.Namespace != "" {
+		namespace = kube.Namespace
 	} else {
 		namespace = apiv1.NamespaceDefault
 	}
@@ -128,7 +129,7 @@ func SwapDeployment() (*appsv1.Deployment, error) {
 }
 
 // Get just a single pod of the deployment or fail if not a single pod deployment.
-func getDeploymentPod(kube *Kubernetes, deployment *appsv1.Deployment) (*apiv1.Pod, error) {
+func getDeploymentPod(kube *args.Kubernetes, deployment *appsv1.Deployment) (*apiv1.Pod, error) {
 	pods, err := getDeploymentPods(kube, deployment)
 	if err != nil {
 		panic(err)
@@ -141,8 +142,8 @@ func getDeploymentPod(kube *Kubernetes, deployment *appsv1.Deployment) (*apiv1.P
 }
 
 //getDeploymentPods get all pods belonging to the deployment.
-func getDeploymentPods(kube *Kubernetes, deployment *appsv1.Deployment) (*apiv1.PodList, error) {
-	config, err := clientcmd.BuildConfigFromFlags("", kube.config)
+func getDeploymentPods(kube *args.Kubernetes, deployment *appsv1.Deployment) (*apiv1.PodList, error) {
+	config, err := clientcmd.BuildConfigFromFlags("", kube.Config)
 	if err != nil {
 		panic(err)
 	}
@@ -159,8 +160,8 @@ func getDeploymentPods(kube *Kubernetes, deployment *appsv1.Deployment) (*apiv1.
 }
 
 //PortForward set up port-forward to the deployment.
-func PortForward(kube *Kubernetes, deployment *appsv1.Deployment) error {
-	config, err := clientcmd.BuildConfigFromFlags("", kube.config)
+func PortForward(kube *args.Kubernetes, deployment *appsv1.Deployment) error {
+	config, err := clientcmd.BuildConfigFromFlags("", kube.Config)
 	if err != nil {
 		panic(err)
 	}
@@ -185,7 +186,7 @@ func PortForward(kube *Kubernetes, deployment *appsv1.Deployment) error {
 
 	stopChan, readyChan := make(chan struct{}, 1), make(chan struct{}, 1)
 	out, errOut := new(bytes.Buffer), new(bytes.Buffer)
-	ports := []string{fmt.Sprintf("%d:%d", kube.hostPort, kube.containerPort)}
+	ports := []string{fmt.Sprintf("%d:%d", kube.HostPort, kube.ContainerPort)}
 
 	forwarder, err := portforward.New(dialer, ports, stopChan, readyChan, out, errOut)
 	if err != nil {
@@ -220,8 +221,8 @@ func PortForward(kube *Kubernetes, deployment *appsv1.Deployment) error {
 }
 
 // Exec execute the specified command in the Pod
-func Exec(command string, kube *Kubernetes, deployment *appsv1.Deployment, stdin io.Reader) (string, string, error) {
-	config, err := clientcmd.BuildConfigFromFlags("", kube.config)
+func Exec(command string, kube *args.Kubernetes, deployment *appsv1.Deployment, stdin io.Reader) (string, string, error) {
+	config, err := clientcmd.BuildConfigFromFlags("", kube.Config)
 	if err != nil {
 		panic(err)
 	}
@@ -250,7 +251,7 @@ func Exec(command string, kube *Kubernetes, deployment *appsv1.Deployment, stdin
 	parameterCodec := runtime.NewParameterCodec(scheme)
 	req.VersionedParams(&apiv1.PodExecOptions{
 		Command:   strings.Fields(command),
-		Container: kube.containerName,
+		Container: kube.ContainerName,
 		Stdin:     stdin != nil,
 		Stdout:    true,
 		Stderr:    true,

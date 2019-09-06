@@ -1,4 +1,4 @@
-package main
+package args
 
 import (
 	"github.com/docker/docker/pkg/homedir"
@@ -6,24 +6,24 @@ import (
 )
 
 type Proxy struct {
-	image     string
-	workspace string
-	port      int32
+	Image     string
+	Workspace string
+	Port      int32
 }
 
 type Kubernetes struct {
-	config         string
-	namespace      string
-	deploymentName string
-	image          string
-	hostPort       int32
-	containerName  string
-	containerPort  int32
+	Config         string
+	Namespace      string
+	DeploymentName string
+	Image          string
+	HostPort       int32
+	ContainerName  string
+	ContainerPort  int32
 }
 
 type Context struct {
-	proxy      Proxy
-	kubernetes Kubernetes
+	Proxy      Proxy
+	Kubernetes Kubernetes
 }
 
 //ParseArgs parse command line arguments
@@ -61,14 +61,15 @@ func ParseArgs() (Context, error) {
 		}
 	*/
 	var c Context
-	c.proxy.workspace = "/tmp"                                            //TODO: get the path from cmd line params.
-	c.proxy.port = 2022                                                   //TODO: get the port from cmd line params.
-	c.kubernetes.config = filepath.Join(homedir.Get(), ".kube", "config") //TODO: get from 1) cmd-line, 2) environment or 3) default.
-	c.kubernetes.deploymentName = "tropos"                                //TODO: get the deployment name from 1) cmd-line, 2) environment or 3) use "tropos" as default.
+	c.Proxy.Workspace = "/tmp" //TODO: get the path from cmd line params.
+	c.Proxy.Port = 2022        //TODO: get the port from cmd line params.
+	//c.Kubernetes.Config = filepath.Join(homedir.Get(), ".kube", "config") //TODO: get from 1) cmd-line, 2) environment or 3) default.
+	c.Kubernetes.Config = filepath.Join(homedir.Get(), "tmp", "config") //TODO: get from 1) cmd-line, 2) environment or 3) default.
+	c.Kubernetes.DeploymentName = "tropos"                              //TODO: get the deployment name from 1) cmd-line, 2) environment or 3) use "tropos" as default.
 	//c.kubernetes.image = "nginx:1.12"                                   //TODO: get the image from 1) cmd-line, 2) environment
-	c.kubernetes.image = "tropos-base:latest"                            //TODO: get the image from 1) cmd-line, 2) environment
-	c.kubernetes.hostPort = 2022                                          //TODO: get the port from 1) cmd-line, 2) environment or 3) 22 as default
-	c.kubernetes.containerPort = 22                                       //TODO: get the port from 1) cmd-line, 2) environment or 3) 22 as default
+	c.Kubernetes.Image = "docker.io/olatheander/tropos-base:latest" //TODO: get the image from 1) cmd-line, 2) environment
+	c.Kubernetes.HostPort = 2022                                    //TODO: get the port from 1) cmd-line, 2) environment or 3) 22 as default
+	c.Kubernetes.ContainerPort = 22                                 //TODO: get the port from 1) cmd-line, 2) environment or 3) 22 as default
 
 	return c, nil
 }
