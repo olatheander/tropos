@@ -2,7 +2,6 @@ package docker
 
 import (
 	"context"
-	"fmt"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/mount"
@@ -17,7 +16,6 @@ func NewDockerClient() (*client.Client, error) {
 func CreateNewContainer(image string,
 	workspaceLocalPath string,
 	cli *client.Client) (string, error) {
-	fmt.Println("Starting a new container.")
 	hostBinding := nat.PortBinding{
 		HostIP:   "0.0.0.0",
 		HostPort: "2022",
@@ -50,6 +48,5 @@ func CreateNewContainer(image string,
 	}
 
 	cli.ContainerStart(context.Background(), cont.ID, types.ContainerStartOptions{})
-	fmt.Printf("Container %s is started", cont.ID)
 	return cont.ID, nil
 }

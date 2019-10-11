@@ -17,7 +17,8 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
-	args "tropos/pkg/args"
+	"time"
+	"tropos/pkg/args"
 )
 
 func getDeployment(kube *args.Kubernetes) (*appsv1.Deployment, error) {
@@ -110,6 +111,16 @@ func NewDeployment(kube *args.Kubernetes) (*appsv1.Deployment, error) {
 	}
 	fmt.Printf("Created deployment %q.\n", result.GetObjectMeta().GetName())
 
+	// Wait for Pod
+	time.Sleep(10 * time.Second)
+	start := time.Now()
+	for {
+		pod, _ := getDeploymentPod(kube, deployment)
+		if pod != nil || start.Add(time.Duration(30*time.Second)).Before(time.Now()) {
+			break
+		}
+	}
+
 	return result, err
 }
 
@@ -160,7 +171,12 @@ func getDeploymentPods(kube *args.Kubernetes, deployment *appsv1.Deployment) (*a
 }
 
 //PortForward set up port-forward to the deployment.
-func PortForward(kube *args.Kubernetes, deployment *appsv1.Deployment) error {
+func PortForward(kube *args.Kubernetes,
+	deployment *appsv1.Deployment,
+	readyChannel chan struct{},
+	stopChannel <-chan struct{},
+	out *bytes.Buffer,
+	errOut *bytes.Buffer) error {
 	config, err := clientcmd.BuildConfigFromFlags("", kube.Config)
 	if err != nil {
 		panic(err)
@@ -184,34 +200,14 @@ func PortForward(kube *args.Kubernetes, deployment *appsv1.Deployment) error {
 
 	dialer := spdy.NewDialer(upgrader, &http.Client{Transport: roundTripper}, http.MethodPost, &serverURL)
 
-	stopChan, readyChan := make(chan struct{}, 1), make(chan struct{}, 1)
-	out, errOut := new(bytes.Buffer), new(bytes.Buffer)
+	//stopChan, readyChan := make(chan struct{}, 1), make(chan struct{}, 1)
+	//out, errOut := new(bytes.Buffer), new(bytes.Buffer)
 	ports := []string{fmt.Sprintf("%d:%d", kube.HostPort, kube.ContainerPort)}
 
-	forwarder, err := portforward.New(dialer, ports, stopChan, readyChan, out, errOut)
+	forwarder, err := portforward.New(dialer, ports, stopChannel, readyChannel, out, errOut)
 	if err != nil {
 		panic(err)
 	}
-
-	go func() {
-		for range readyChan { // Kubernetes will close this channel when it has something to tell us.
-		}
-		if len(errOut.String()) != 0 {
-			panic(errOut.String())
-		} else if len(out.String()) != 0 {
-			fmt.Println(out.String())
-			go func() {
-				fmt.Println("Mounting working directory in pod.")
-				//TODO: this is just a dummy test. Should set up sshfs like in https://superuser.com/questions/616182/how-to-mount-local-directory-to-remote-like-sshfs
-				output, stderr, err := Exec("ls -l /", kube, deployment, nil)
-				fmt.Println(output)
-				fmt.Println(stderr)
-				if err != nil {
-					panic(err)
-				}
-			}()
-		}
-	}()
 
 	if err = forwarder.ForwardPorts(); err != nil { // Locks until stopChan is closed.
 		panic(err)
@@ -221,7 +217,7 @@ func PortForward(kube *args.Kubernetes, deployment *appsv1.Deployment) error {
 }
 
 // Exec execute the specified command in the Pod
-func Exec(command string, kube *args.Kubernetes, deployment *appsv1.Deployment, stdin io.Reader) (string, string, error) {
+func Exec(command string, kube *args.Kubernetes, deployment *appsv1.Deployment, stdin io.Reader, stdout io.Writer, stderr io.Writer) (error) {
 	config, err := clientcmd.BuildConfigFromFlags("", kube.Config)
 	if err != nil {
 		panic(err)
@@ -244,7 +240,7 @@ func Exec(command string, kube *args.Kubernetes, deployment *appsv1.Deployment, 
 		SubResource("exec")
 	scheme := runtime.NewScheme()
 	if err := apiv1.AddToScheme(scheme); err != nil {
-		return "", "", fmt.Errorf("error adding to scheme: %v", err)
+		return fmt.Errorf("error adding to scheme: %v", err)
 	}
 
 	//TODO: if multiple containers in Pod and kube.containerName is not set or not matching existing container => fail.
@@ -260,21 +256,20 @@ func Exec(command string, kube *args.Kubernetes, deployment *appsv1.Deployment, 
 
 	exec, err := remotecommand.NewSPDYExecutor(config, "POST", req.URL())
 	if err != nil {
-		return "", "", fmt.Errorf("error while creating Executor: %v", err)
+		return fmt.Errorf("error while creating Executor: %v", err)
 	}
 
-	var stdout, stderr bytes.Buffer
 	err = exec.Stream(remotecommand.StreamOptions{
 		Stdin:  stdin,
-		Stdout: &stdout,
-		Stderr: &stderr,
+		Stdout: stdout,
+		Stderr: stderr,
 		Tty:    false,
 	})
 	if err != nil {
-		return "", "", fmt.Errorf("error in Stream: %v", err)
+		return fmt.Errorf("error in Stream: %v", err)
 	}
 
-	return stdout.String(), stderr.String(), nil
+	return nil
 }
 
 //DeleteDeployment Delete the newly (non-swapped) deployment.

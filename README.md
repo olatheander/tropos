@@ -52,8 +52,9 @@ and then connect with SSH enabling remote forwarding over SSH and run `sshfs` mo
 ```
 # ssh -i ~/.ssh/id_rsa root@localhost -p 2022 -R 10000:localhost:22
 # mkdir /workspace
-# sshfs -p 10000 root@127.0.0.1:/workspace /workspace
+# sshfs -p 10000 -C root@127.0.0.1:/workspace /workspace
 ```
+Here `-p 10000` is the port number and `-C` enable compression. 
 
 ### Pod security policies
 ```

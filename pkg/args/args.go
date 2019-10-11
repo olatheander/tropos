@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 )
 
-type Proxy struct {
+type Docker struct {
 	Image     string
 	Workspace string
 	Port      int32
@@ -22,7 +22,7 @@ type Kubernetes struct {
 }
 
 type Context struct {
-	Proxy      Proxy
+	Docker     Docker
 	Kubernetes Kubernetes
 }
 
@@ -61,14 +61,15 @@ func ParseArgs() (Context, error) {
 		}
 	*/
 	var c Context
-	c.Proxy.Workspace = "/tmp" //TODO: get the path from cmd line params.
-	c.Proxy.Port = 2022        //TODO: get the port from cmd line params.
+	c.Docker.Image = "docker.io/olatheander/tropos-base:latest"
+	c.Docker.Workspace = "/tmp" //TODO: get the path from cmd line params.
+	c.Docker.Port = 2022        //TODO: get the port from cmd line params.
 	//c.Kubernetes.Config = filepath.Join(homedir.Get(), ".kube", "config") //TODO: get from 1) cmd-line, 2) environment or 3) default.
 	c.Kubernetes.Config = filepath.Join(homedir.Get(), "tmp", "config") //TODO: get from 1) cmd-line, 2) environment or 3) default.
 	c.Kubernetes.DeploymentName = "tropos"                              //TODO: get the deployment name from 1) cmd-line, 2) environment or 3) use "tropos" as default.
 	//c.kubernetes.image = "nginx:1.12"                                   //TODO: get the image from 1) cmd-line, 2) environment
 	c.Kubernetes.Image = "docker.io/olatheander/tropos-base:latest" //TODO: get the image from 1) cmd-line, 2) environment
-	c.Kubernetes.HostPort = 2022                                    //TODO: get the port from 1) cmd-line, 2) environment or 3) 22 as default
+	c.Kubernetes.HostPort = 8022                                    //TODO: get the port from 1) cmd-line, 2) environment or 3) 22 as default
 	c.Kubernetes.ContainerPort = 22                                 //TODO: get the port from 1) cmd-line, 2) environment or 3) 22 as default
 
 	return c, nil

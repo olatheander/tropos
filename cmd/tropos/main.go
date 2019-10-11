@@ -2,7 +2,7 @@ package main
 
 import (
 	"tropos/pkg/args"
-	"tropos/pkg/kubernetes"
+	"tropos/pkg/tropos"
 )
 
 func main() {
@@ -11,27 +11,5 @@ func main() {
 		panic(err)
 	}
 
-	//cli, err := NewDockerClient()
-	//if err != nil {
-	//	panic(err)
-	//}
-
-	//CreateNewContainer("tropos-proxy",
-	//	context.proxy.workspace,
-	//	cli)
-
-	deployment, err := kubernetes.NewDeployment(&context.Kubernetes)
-	if err != nil {
-		panic(err)
-	}
-
-	//deployment, err := GetDeployment(&context.kubernetes)
-	//_, err = GetDeploymentPods(&context.kubernetes, deployment)
-	err = kubernetes.PortForward(&context.Kubernetes,
-		deployment)
-	if err != nil {
-		panic(err)
-	}
-
-	//TODO: Wait for SIGHUP and then clean up.
+	tropos.NewDeployment(context)
 }
