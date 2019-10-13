@@ -2,7 +2,9 @@ package args
 
 import (
 	"github.com/docker/docker/pkg/homedir"
+	"os"
 	"path/filepath"
+	"runtime"
 )
 
 type Docker struct {
@@ -21,9 +23,14 @@ type Kubernetes struct {
 	ContainerPort  int32
 }
 
+type SSH struct {
+	PublicKeyPath string
+}
+
 type Context struct {
 	Docker     Docker
 	Kubernetes Kubernetes
+	SSH        SSH
 }
 
 //ParseArgs parse command line arguments
@@ -62,15 +69,18 @@ func ParseArgs() (Context, error) {
 	*/
 	var c Context
 	c.Docker.Image = "docker.io/olatheander/tropos-base:latest"
-	c.Docker.Workspace = "/tmp" //TODO: get the path from cmd line params.
-	c.Docker.Port = 2022        //TODO: get the port from cmd line params.
-	//c.Kubernetes.Config = filepath.Join(homedir.Get(), ".kube", "config") //TODO: get from 1) cmd-line, 2) environment or 3) default.
-	c.Kubernetes.Config = filepath.Join(homedir.Get(), "tmp", "config") //TODO: get from 1) cmd-line, 2) environment or 3) default.
-	c.Kubernetes.DeploymentName = "tropos"                              //TODO: get the deployment name from 1) cmd-line, 2) environment or 3) use "tropos" as default.
-	//c.kubernetes.image = "nginx:1.12"                                   //TODO: get the image from 1) cmd-line, 2) environment
-	c.Kubernetes.Image = "docker.io/olatheander/tropos-base:latest" //TODO: get the image from 1) cmd-line, 2) environment
-	c.Kubernetes.HostPort = 8022                                    //TODO: get the port from 1) cmd-line, 2) environment or 3) 22 as default
-	c.Kubernetes.ContainerPort = 22                                 //TODO: get the port from 1) cmd-line, 2) environment or 3) 22 as default
-
+	c.Docker.Workspace = "/tmp"                                           //TODO: get the path from cmd line params.
+	c.Docker.Port = 2022                                                  //TODO: get the port from cmd line params.
+	c.Kubernetes.Config = filepath.Join(homedir.Get(), ".kube", "config") //TODO: get from 1) cmd-line, 2) environment or 3) default.
+	c.Kubernetes.DeploymentName = "tropos"                                //TODO: get the deployment name from 1) cmd-line, 2) environment or 3) use "tropos" as default.
+	c.Kubernetes.Image = "docker.io/olatheander/tropos-base:latest"       //TODO: get the image from 1) cmd-line, 2) environment
+	c.Kubernetes.HostPort = 8022                                          //TODO: get the port from 1) cmd-line, 2) environment or 3) 22 as default
+	c.Kubernetes.ContainerPort = 22                                       //TODO: get the port from 1) cmd-line, 2) environment or 3) 22 as default
+	if runtime.GOOS == "windows" {
+		//TODO: Consider https://github.com/mitchellh/go-homedir for this.
+		c.SSH.PublicKeyPath = filepath.Join(os.Getenv("HOME"), ".ssh", "id_rsa.pub")
+	} else {
+		c.SSH.PublicKeyPath = filepath.Join(os.Getenv("HOME"), ".ssh", "id_rsa.pub")
+	}
 	return c, nil
 }

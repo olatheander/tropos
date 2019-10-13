@@ -32,7 +32,9 @@ func NewDeployment(context args.Context) {
 		panic(err)
 	}
 
-	authorizeSshKey(&context.Kubernetes, deployment)
+	authorizeSshKey(context.SSH.PublicKeyPath,
+		&context.Kubernetes,
+		deployment)
 
 	generateSshKeysInPod(&context.Kubernetes, deployment)
 
@@ -49,11 +51,11 @@ func SwapDeployment(context args.Context) {
 
 // Authorize the SSH key in the deployment.
 // Copy SSH public key to container, i.e. the equivalent of kubectl cp ~/.ssh/id_rsa.pub tropos-58d96c958d-d4799:/root/.ssh/authorized_keys
-func authorizeSshKey(k8s *args.Kubernetes, deployment *appsv1.Deployment) (error) {
+func authorizeSshKey(keyPath string, k8s *args.Kubernetes, deployment *appsv1.Deployment) (error) {
 	reader, writer := io.Pipe()
 
 	defer writer.Close()
-	cmd := exec.Command("cat", "/home/olathe/.ssh/id_rsa.pub")
+	cmd := exec.Command("cat", keyPath)
 	cmd.Stdout = writer
 
 	go func() {
