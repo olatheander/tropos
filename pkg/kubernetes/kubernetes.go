@@ -16,6 +16,7 @@ import (
 	"k8s.io/client-go/transport/spdy"
 	"net/http"
 	"net/url"
+	"os/exec"
 	"strings"
 	"time"
 	"tropos/pkg/args"
@@ -272,8 +273,59 @@ func Exec(command string, kube *args.Kubernetes, deployment *appsv1.Deployment, 
 	return nil
 }
 
+func CopyFromPod(kube *args.Kubernetes, deployment *appsv1.Deployment) {
+
+}
+
+// Copy file or directory to Pod
+func CopyToPod(srcPath string, destPath string, kube *args.Kubernetes, deployment *appsv1.Deployment) (error) {
+	reader, writer := io.Pipe()
+
+	//TODO: Look into using https://golang.org/pkg/archive/tar/ instead of tar tool.
+	defer writer.Close()
+	cmd := exec.Command("tar", "zcf", "-", srcPath)
+	cmd.Stdout = writer
+
+	go func() {
+		defer reader.Close()
+		var stdout, stderr bytes.Buffer
+		cmd := []string{"tar", "zxf", "-", "-C", destPath}
+		err := Exec(strings.Join(cmd, " "),
+			kube,
+			deployment,
+			reader,
+			&stdout,
+			&stderr)
+
+		if err != nil {
+			panic(err)
+		}
+	}()
+
+	cmd.Run()
+	return nil
+}
+
 //DeleteDeployment Delete the newly (non-swapped) deployment.
-func DeleteDeployment(*appsv1.Deployment) error {
+func DeleteDeployment(kube *args.Kubernetes, deployment *appsv1.Deployment) error {
+	config, err := clientcmd.BuildConfigFromFlags("", kube.Config)
+	if err != nil {
+		panic(err)
+	}
+
+	clientSet, err := kubernetes.NewForConfig(config)
+	if err != nil {
+		panic(err)
+	}
+
+	namespace := getNamespace(kube)
+	deploymentsClient := clientSet.AppsV1().Deployments(namespace)
+	deletePolicy := metav1.DeletePropagationForeground
+	if err := deploymentsClient.Delete(deployment.Name, &metav1.DeleteOptions{
+		PropagationPolicy: &deletePolicy,
+	}); err != nil {
+		panic(err)
+	}
 	return nil
 }
 

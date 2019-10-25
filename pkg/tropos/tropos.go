@@ -3,9 +3,15 @@ package tropos
 import (
 	"bytes"
 	"fmt"
+	"github.com/docker/docker/client"
 	"io"
+	"io/ioutil"
 	appsv1 "k8s.io/api/apps/v1"
+	"os"
 	"os/exec"
+	"os/signal"
+	"strings"
+	"sync"
 	"tropos/pkg/args"
 	"tropos/pkg/docker"
 	"tropos/pkg/kubernetes"
@@ -17,6 +23,7 @@ func NewDeployment(context args.Context) {
 	if err != nil {
 		panic(err)
 	}
+	defer cli.Close()
 
 	fmt.Println("Starting Docker container")
 	containerId, err := docker.CreateNewContainer(context.Docker.Image,
@@ -26,11 +33,19 @@ func NewDeployment(context args.Context) {
 		panic(err)
 	}
 	fmt.Println("Started Docker container (ID:", containerId, ")")
+	defer func(containerId string, cli *client.Client) {
+		docker.CloseContainer(containerId, cli)
+		fmt.Println("Stopped and removed Docker container (ID:", containerId, ")")
+	}(containerId, cli)
 
 	deployment, err := kubernetes.NewDeployment(&context.Kubernetes)
 	if err != nil {
 		panic(err)
 	}
+	defer func(deployment *appsv1.Deployment) {
+		kubernetes.DeleteDeployment(&context.Kubernetes, deployment)
+		fmt.Println("Deleted deployment (", deployment.Name, ")")
+	}(deployment)
 
 	authorizeSshKey(context.SSH.PublicKeyPath,
 		&context.Kubernetes,
@@ -38,10 +53,26 @@ func NewDeployment(context args.Context) {
 
 	generateSshKeysInPod(&context.Kubernetes, deployment)
 
+	containerTrustPodKeys(&context.Kubernetes, deployment, containerId, cli)
+
 	portForward(&context.Kubernetes, deployment)
 
-	fmt.Println("All set up. Carry on...")
-	//TODO: Wait for SIGHUP and then clean up.
+	fmt.Println("All set up. Carry on... (press Ctrl+C to exit).")
+	waitForCtrlC()
+	fmt.Println("Closing down and cleaning up.")
+}
+
+func waitForCtrlC() {
+	var endWaiter sync.WaitGroup
+	endWaiter.Add(1)
+	var signalChannel chan os.Signal
+	signalChannel = make(chan os.Signal, 1)
+	signal.Notify(signalChannel, os.Interrupt)
+	go func() {
+		<-signalChannel
+		endWaiter.Done()
+	}()
+	endWaiter.Wait()
 }
 
 // Swap out an existing deployment for a new development deployment
@@ -97,6 +128,65 @@ func generateSshKeysInPod(k8s *args.Kubernetes, deployment *appsv1.Deployment) (
 	}
 
 	fmt.Println("Generated Tropos SSH keys in Pod")
+	return nil
+}
+
+// Make the Docker container mounting the workspace files trust the new SSH key in the Pod
+func containerTrustPodKeys(k8s *args.Kubernetes,
+	deployment *appsv1.Deployment,
+	containerId string,
+	cli *client.Client) {
+
+	file, err := ioutil.TempFile("", "tropos.*.pub")
+	if err != nil {
+		panic(err)
+	}
+	defer os.Remove(file.Name())
+
+	copyPodPublicKey("/root/.ssh/tropos.pub",
+		file.Name(),
+		k8s,
+		deployment)
+
+	docker.CopyToContainer(containerId,
+		file.Name(),
+		"/root/.ssh/authorized_keys",
+		cli)
+	fmt.Println("Authorized SSH key in Docker container:")
+}
+
+// Copy the public SSH key from the Pod
+func copyPodPublicKey(keyPath string,
+	destPath string,
+	k8s *args.Kubernetes,
+	deployment *appsv1.Deployment) error {
+	reader, writer := io.Pipe()
+
+	defer reader.Close()
+	var stdout, stderr bytes.Buffer
+	cmd := exec.Command("tee", destPath)
+	cmd.Stdin = reader
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+
+	go func() {
+		defer writer.Close()
+		var stderr bytes.Buffer
+		cmd := []string{"cat", keyPath}
+		err := kubernetes.Exec(strings.Join(cmd, " "),
+			k8s,
+			deployment,
+			nil,
+			writer,
+			&stderr)
+
+		if err != nil {
+			panic(err)
+		}
+	}()
+
+	cmd.Run()
+	fmt.Println("Copied SSH key from Pod:", &stdout)
 	return nil
 }
 
