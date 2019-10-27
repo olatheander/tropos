@@ -15,6 +15,7 @@ import (
 	"tropos/pkg/args"
 	"tropos/pkg/docker"
 	"tropos/pkg/kubernetes"
+	"tropos/pkg/ssh"
 )
 
 // Stage a new deployment and mount the workspace
@@ -46,7 +47,6 @@ func NewDeployment(context args.Context) {
 		panic(err)
 	}
 
-	//containerTrustPodKeys(&context.Kubernetes, deployment, containerId, cli)
 	pubKeyFile, err := copyPodPublicKeyToTemp("/root/.ssh/tropos.pub",
 		&context.Kubernetes,
 		deployment)
@@ -71,9 +71,27 @@ func NewDeployment(context args.Context) {
 
 	portForward(&context.Kubernetes, deployment)
 
+	setupSsh(&context.SSH)
+
 	fmt.Println("All set up. Carry on... (press Ctrl+C to exit).")
 	waitForCtrlC()
 	fmt.Println("Closing down and cleaning up.")
+}
+
+func setupSsh(sshConfig *args.SSH) {
+	ssh.NewSSHTunnel(sshConfig.PublicKeyPath,
+		&ssh.Endpoint{
+			Host: sshConfig.ServerEndpoint.Host,
+			Port: sshConfig.ServerEndpoint.Port,
+		},
+		&ssh.Endpoint{
+			Host: sshConfig.LocalEndpoint.Host,
+			Port: sshConfig.LocalEndpoint.Port,
+		},
+		&ssh.Endpoint{
+			Host: sshConfig.RemoteEndpoint.Host,
+			Port: sshConfig.RemoteEndpoint.Port,
+		})
 }
 
 func waitForCtrlC() {
@@ -252,15 +270,17 @@ func portForward(k8s *args.Kubernetes, deployment *appsv1.Deployment) (error) {
 		}
 	}()
 
-	err := kubernetes.PortForward(k8s,
-		deployment,
-		readyChan,
-		stopChan,
-		out,
-		errOut)
-	if err != nil {
-		panic(err)
-	}
+	go func() {
+		err := kubernetes.PortForward(k8s,
+			deployment,
+			readyChan,
+			stopChan,
+			out,
+			errOut)
+		if err != nil {
+			panic(err)
+		}
+	}()
 
 	return nil
 }
