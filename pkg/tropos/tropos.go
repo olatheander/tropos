@@ -25,19 +25,6 @@ func NewDeployment(context args.Context) {
 	}
 	defer cli.Close()
 
-	fmt.Println("Starting Docker container")
-	containerId, err := docker.CreateNewContainer(context.Docker.Image,
-		context.Docker.Workspace,
-		cli)
-	if err != nil {
-		panic(err)
-	}
-	fmt.Println("Started Docker container (ID:", containerId, ")")
-	defer func(containerId string, cli *client.Client) {
-		docker.CloseContainer(containerId, cli)
-		fmt.Println("Stopped and removed Docker container (ID:", containerId, ")")
-	}(containerId, cli)
-
 	deployment, err := kubernetes.NewDeployment(&context.Kubernetes)
 	if err != nil {
 		panic(err)
@@ -47,13 +34,40 @@ func NewDeployment(context args.Context) {
 		fmt.Println("Deleted deployment (", deployment.Name, ")")
 	}(deployment)
 
-	authorizeSshKey(context.SSH.PublicKeyPath,
+	err = authorizeSshKey(context.SSH.PublicKeyPath,
 		&context.Kubernetes,
 		deployment)
+	if err != nil {
+		panic(err)
+	}
 
-	generateSshKeysInPod(&context.Kubernetes, deployment)
+	err = generateSshKeysInPod(&context.Kubernetes, deployment)
+	if err != nil {
+		panic(err)
+	}
 
-	containerTrustPodKeys(&context.Kubernetes, deployment, containerId, cli)
+	//containerTrustPodKeys(&context.Kubernetes, deployment, containerId, cli)
+	pubKeyFile, err := copyPodPublicKeyToTemp("/root/.ssh/tropos.pub",
+		&context.Kubernetes,
+		deployment)
+	if err != nil {
+		panic(err)
+	}
+	defer os.Remove(pubKeyFile.Name())
+
+	fmt.Println("Starting Docker container")
+	containerId, err := docker.CreateNewContainer(context.Docker.Image,
+		context.Docker.Workspace,
+		pubKeyFile.Name(),
+		cli)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println("Started Docker container (ID:", containerId, ")")
+	defer func(containerId string, cli *client.Client) {
+		docker.CloseContainer(containerId, cli)
+		fmt.Println("Stopped and removed Docker container (ID:", containerId, ")")
+	}(containerId, cli)
 
 	portForward(&context.Kubernetes, deployment)
 
@@ -153,6 +167,24 @@ func containerTrustPodKeys(k8s *args.Kubernetes,
 		"/root/.ssh/authorized_keys",
 		cli)
 	fmt.Println("Authorized SSH key in Docker container:")
+}
+
+// Copy the public SSH key from the Pod to a temporary file
+func copyPodPublicKeyToTemp(keyPath string,
+	k8s *args.Kubernetes,
+	deployment *appsv1.Deployment) (f *os.File, err error) {
+
+	file, err := ioutil.TempFile("", "tropos.*.pub")
+	if err != nil {
+		panic(err)
+	}
+
+	err = copyPodPublicKey(keyPath,
+		file.Name(),
+		k8s,
+		deployment)
+
+	return file, err
 }
 
 // Copy the public SSH key from the Pod

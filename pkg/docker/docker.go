@@ -19,6 +19,7 @@ func NewDockerClient() (*client.Client, error) {
 
 func CreateNewContainer(image string,
 	workspaceLocalPath string,
+	pubKeyLocalPath string,
 	cli *client.Client) (string, error) {
 	hostBinding := nat.PortBinding{
 		HostIP:   "0.0.0.0",
@@ -43,6 +44,11 @@ func CreateNewContainer(image string,
 					Type:   mount.TypeBind,
 					Source: workspaceLocalPath,
 					Target: "/workspace",
+				},
+				{
+					Type:   mount.TypeBind,
+					Source: pubKeyLocalPath,
+					Target: "/root/.ssh/authorized_keys",
 				},
 			},
 		},
