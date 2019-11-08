@@ -69,17 +69,36 @@ func NewDeployment(context args.Context) {
 		fmt.Println("Stopped and removed Docker container (ID:", containerId, ")")
 	}(containerId, cli)
 
-	portForward(&context.Kubernetes, deployment)
+	portForward(&context.Kubernetes, deployment, func(stopChannel chan struct{}) {
+		defer close(stopChannel)
 
-	setupSsh(&context.SSH)
+		fmt.Println("Mounting working directory in pod.")
+		//TODO: this is just a dummy test. Should set up sshfs like in https://superuser.com/questions/616182/how-to-mount-local-directory-to-remote-like-sshfs
+		var stdout, stderr bytes.Buffer
+		err := kubernetes.Exec("ls -l /",
+			&context.Kubernetes,
+			deployment,
+			nil,
+			&stdout,
+			&stderr)
+		fmt.Println(&stdout)
+		fmt.Println(&stderr)
+		if err != nil {
+			panic(err)
+		}
 
-	fmt.Println("All set up. Carry on... (press Ctrl+C to exit).")
-	waitForCtrlC()
-	fmt.Println("Closing down and cleaning up.")
+		fmt.Println("Configuring SSH tunnels.")
+		//setupSsh(&context.SSH)
+
+		fmt.Println("All set up. Carry on... (press Ctrl+C to exit).")
+		waitForCtrlC()
+		fmt.Println("Closing down and cleaning up.")
+	})
 }
 
 func setupSsh(sshConfig *args.SSH) {
-	ssh.NewSSHTunnel(sshConfig.PublicKeyPath,
+	ssh.NewSSHTunnel(sshConfig.User,
+		sshConfig.PublicKeyPath,
 		&ssh.Endpoint{
 			Host: sshConfig.ServerEndpoint.Host,
 			Port: sshConfig.ServerEndpoint.Port,
@@ -240,8 +259,8 @@ func copyPodPublicKey(keyPath string,
 	return nil
 }
 
-// Set up port-forwarding.
-func portForward(k8s *args.Kubernetes, deployment *appsv1.Deployment) (error) {
+// Set up port-forwarding and trigger f-function after port-forwarding is setup.
+func portForward(k8s *args.Kubernetes, deployment *appsv1.Deployment, f func(stopChannel chan struct{})) error {
 	stopChan, readyChan := make(chan struct{}, 1), make(chan struct{}, 1)
 	out, errOut := new(bytes.Buffer), new(bytes.Buffer)
 	go func() {
@@ -251,36 +270,19 @@ func portForward(k8s *args.Kubernetes, deployment *appsv1.Deployment) (error) {
 			panic(errOut.String())
 		} else if len(out.String()) != 0 {
 			fmt.Println(out.String())
-			go func() {
-				fmt.Println("Mounting working directory in pod.")
-				//TODO: this is just a dummy test. Should set up sshfs like in https://superuser.com/questions/616182/how-to-mount-local-directory-to-remote-like-sshfs
-				var stdout, stderr bytes.Buffer
-				err := kubernetes.Exec("ls -l /",
-					k8s,
-					deployment,
-					nil,
-					&stdout,
-					&stderr)
-				fmt.Println(&stdout)
-				fmt.Println(&stderr)
-				if err != nil {
-					panic(err)
-				}
-			}()
+			f(stopChan)
 		}
 	}()
 
-	go func() {
-		err := kubernetes.PortForward(k8s,
-			deployment,
-			readyChan,
-			stopChan,
-			out,
-			errOut)
-		if err != nil {
-			panic(err)
-		}
-	}()
+	err := kubernetes.PortForward(k8s,
+		deployment,
+		readyChan,
+		stopChan,
+		out,
+		errOut)
+	if err != nil {
+		panic(err)
+	}
 
 	return nil
 }

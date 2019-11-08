@@ -20,13 +20,14 @@ func (endpoint *Endpoint) String() string {
 }
 
 // Open an SSH tunnel (ssh -R)
-func NewSSHTunnel(publicKeyPath string,
+func NewSSHTunnel(user string,
+	publicKeyPath string,
 	serverEndpoint *Endpoint,
 	localEndpoint *Endpoint,
 	remoteEndpoint *Endpoint) error {
 	sshClientConfig := &ssh.ClientConfig{
 		// SSH connection username
-		User: "operatore",
+		User: user,
 		Auth: []ssh.AuthMethod{
 			// put here your private key path
 			publicKeyFile(publicKeyPath),

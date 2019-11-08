@@ -88,9 +88,9 @@ func ParseArgs() (Context, error) {
 	c.SSH.User = "root"
 	if runtime.GOOS == "windows" {
 		//TODO: Consider https://github.com/mitchellh/go-homedir for this.
-		c.SSH.PublicKeyPath = filepath.Join(os.Getenv("HOME"), ".ssh", "id_rsa.pub")
+		c.SSH.PublicKeyPath = filepath.Join(os.Getenv("HOME"), ".ssh", "id_rsa")
 	} else {
-		c.SSH.PublicKeyPath = filepath.Join(os.Getenv("HOME"), ".ssh", "id_rsa.pub")
+		c.SSH.PublicKeyPath = filepath.Join(os.Getenv("HOME"), ".ssh", "id_rsa")
 	}
 	c.SSH.ServerEndpoint.Host = "localhost"
 	c.SSH.ServerEndpoint.Port = 8022
