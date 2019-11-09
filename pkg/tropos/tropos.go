@@ -88,7 +88,7 @@ func NewDeployment(context args.Context) {
 		}
 
 		fmt.Println("Configuring SSH tunnels.")
-		//setupSsh(&context.SSH)
+		setupSsh(&context.SSH)
 
 		fmt.Println("All set up. Carry on... (press Ctrl+C to exit).")
 		waitForCtrlC()
@@ -149,6 +149,20 @@ func authorizeSshKey(keyPath string, k8s *args.Kubernetes, deployment *appsv1.De
 			reader,
 			&stdout,
 			&stderr)
+		if err != nil {
+			panic(err)
+		}
+
+		// Change ovnership of the authorized_keys file.
+		err = kubernetes.Exec("chown root:root /root/.ssh/authorized_keys",
+			k8s,
+			deployment,
+			reader,
+			&stdout,
+			&stderr)
+		if err != nil {
+			panic(err)
+		}
 
 		fmt.Println("Authorized SSH key:", &stdout)
 
