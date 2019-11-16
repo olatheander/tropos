@@ -14,12 +14,12 @@ import (
 )
 
 func NewDockerClient() (*client.Client, error) {
-	return client.NewClientWithOpts(client.WithVersion("1.39")) //TODO: Docker API version as cmd line option or negotiate with server?
+	return client.NewClientWithOpts(
+		client.WithVersion("1.39")) //TODO: Docker API version as cmd line option or negotiate with server?
 }
 
 func CreateNewContainer(image string,
 	workspaceLocalPath string,
-	pubKeyLocalPath string,
 	cli *client.Client) (string, error) {
 	hostBinding := nat.PortBinding{
 		HostIP:   "0.0.0.0",
@@ -44,11 +44,6 @@ func CreateNewContainer(image string,
 					Type:   mount.TypeBind,
 					Source: workspaceLocalPath,
 					Target: "/workspace",
-				},
-				{
-					Type:   mount.TypeBind,
-					Source: pubKeyLocalPath,
-					Target: "/root/.ssh/authorized_keys",
 				},
 			},
 		},
@@ -104,6 +99,37 @@ func CloseContainer(containerId string,
 	if err != nil {
 		panic(err)
 	}
+	return nil
+}
+
+func Exec(containerId string,
+	cmd []string,
+	cli *client.Client) error {
+	config := types.ExecConfig{AttachStdout: true,
+		AttachStderr: true,
+		Cmd:          cmd}
+	execID, err := cli.ContainerExecCreate(context.Background(),
+		containerId,
+		config)
+	if err != nil {
+		return err
+	}
+
+	response, err := cli.ContainerExecAttach(context.Background(),
+		execID.ID,
+		types.ExecStartCheck{})
+	if err != nil {
+		return err
+	}
+	defer response.Close()
+
+	err = cli.ContainerExecStart(context.Background(),
+		execID.ID,
+		types.ExecStartCheck{})
+	if err != nil {
+		return err
+	}
+	//content, _, _ := response.Reader.ReadLine()
 	return nil
 }
 

@@ -30,7 +30,7 @@ type Endpoint struct {
 
 type SSH struct {
 	User           string
-	PublicKeyPath  string
+	PrivateKeyPath string
 	ServerEndpoint Endpoint
 	LocalEndpoint  Endpoint
 	RemoteEndpoint Endpoint
@@ -77,7 +77,7 @@ func ParseArgs() (Context, error) {
 		}
 	*/
 	var c Context
-	c.Docker.Image = "docker.io/olatheander/tropos-workspace:latest"
+	c.Docker.Image = "docker.io/olatheander/tropos-base:latest"
 	c.Docker.Workspace = "/tmp"                                           //TODO: get the path from cmd line params.
 	c.Docker.Port = 2022                                                  //TODO: get the port from cmd line params.
 	c.Kubernetes.Config = filepath.Join(homedir.Get(), ".kube", "config") //TODO: get from 1) cmd-line, 2) environment or 3) default.
@@ -88,15 +88,15 @@ func ParseArgs() (Context, error) {
 	c.SSH.User = "root"
 	if runtime.GOOS == "windows" {
 		//TODO: Consider https://github.com/mitchellh/go-homedir for this.
-		c.SSH.PublicKeyPath = filepath.Join(os.Getenv("HOME"), ".ssh", "id_rsa")
+		c.SSH.PrivateKeyPath = filepath.Join(os.Getenv("HOME"), ".ssh", "id_rsa")
 	} else {
-		c.SSH.PublicKeyPath = filepath.Join(os.Getenv("HOME"), ".ssh", "id_rsa")
+		c.SSH.PrivateKeyPath = filepath.Join(os.Getenv("HOME"), ".ssh", "id_rsa")
 	}
 	c.SSH.ServerEndpoint.Host = "localhost"
 	c.SSH.ServerEndpoint.Port = 8022
 	c.SSH.LocalEndpoint.Host = "localhost"
 	c.SSH.LocalEndpoint.Port = 2022
 	c.SSH.RemoteEndpoint.Host = "localhost"
-	c.SSH.LocalEndpoint.Port = 10000
+	c.SSH.RemoteEndpoint.Port = 10000
 	return c, nil
 }

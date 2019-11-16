@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
+	"path/filepath"
 	"strings"
 	"sync"
 	"tropos/pkg/args"
@@ -19,7 +20,7 @@ import (
 )
 
 // Stage a new deployment and mount the workspace
-func NewDeployment(context args.Context) {
+func NewDeployment(context args.Context) error {
 	cli, err := docker.NewDockerClient()
 	if err != nil {
 		panic(err)
@@ -35,7 +36,11 @@ func NewDeployment(context args.Context) {
 		fmt.Println("Deleted deployment (", deployment.Name, ")")
 	}(deployment)
 
-	err = authorizeSshKey(context.SSH.PublicKeyPath,
+	publicKeyPath := context.SSH.PrivateKeyPath + ".pub"
+	if err != nil {
+		panic(err)
+	}
+	err = authorizeSshKey(publicKeyPath,
 		&context.Kubernetes,
 		deployment)
 	if err != nil {
@@ -47,18 +52,9 @@ func NewDeployment(context args.Context) {
 		panic(err)
 	}
 
-	pubKeyFile, err := copyPodPublicKeyToTemp("/root/.ssh/tropos.pub",
-		&context.Kubernetes,
-		deployment)
-	if err != nil {
-		panic(err)
-	}
-	defer os.Remove(pubKeyFile.Name())
-
 	fmt.Println("Starting Docker container")
 	containerId, err := docker.CreateNewContainer(context.Docker.Image,
 		context.Docker.Workspace,
-		pubKeyFile.Name(),
 		cli)
 	if err != nil {
 		panic(err)
@@ -68,6 +64,12 @@ func NewDeployment(context args.Context) {
 		docker.CloseContainer(containerId, cli)
 		fmt.Println("Stopped and removed Docker container (ID:", containerId, ")")
 	}(containerId, cli)
+
+	// Make the workspace container trust the keys in the Pod
+	containerTrustPodKeys(&context.Kubernetes,
+		deployment,
+		containerId,
+		cli)
 
 	portForward(&context.Kubernetes, deployment, func(stopChannel chan struct{}) {
 		defer close(stopChannel)
@@ -94,11 +96,13 @@ func NewDeployment(context args.Context) {
 		waitForCtrlC()
 		fmt.Println("Closing down and cleaning up.")
 	})
+
+	return nil
 }
 
-func setupSsh(sshConfig *args.SSH) {
-	ssh.NewSSHTunnel(sshConfig.User,
-		sshConfig.PublicKeyPath,
+func setupSsh(sshConfig *args.SSH) error {
+	return ssh.NewSSHTunnel(sshConfig.User,
+		sshConfig.PrivateKeyPath,
 		&ssh.Endpoint{
 			Host: sshConfig.ServerEndpoint.Host,
 			Port: sshConfig.ServerEndpoint.Port,
@@ -215,27 +219,18 @@ func containerTrustPodKeys(k8s *args.Kubernetes,
 
 	docker.CopyToContainer(containerId,
 		file.Name(),
-		"/root/.ssh/authorized_keys",
+		"/root/.ssh/",
 		cli)
-	fmt.Println("Authorized SSH key in Docker container:")
-}
+	fmt.Println("Authorized SSH key in Docker container:", containerId)
 
-// Copy the public SSH key from the Pod to a temporary file
-func copyPodPublicKeyToTemp(keyPath string,
-	k8s *args.Kubernetes,
-	deployment *appsv1.Deployment) (f *os.File, err error) {
-
-	file, err := ioutil.TempFile("", "tropos.*.pub")
-	if err != nil {
-		panic(err)
-	}
-
-	err = copyPodPublicKey(keyPath,
-		file.Name(),
-		k8s,
-		deployment)
-
-	return file, err
+	//Move the Tropos public key file to authorized keys and change ownership.
+	docker.Exec(containerId,
+		[]string{"mv", filepath.Join("/root/.ssh", filepath.Base(file.Name())), "/root/.ssh/authorized_keys"},
+		cli)
+	docker.Exec(containerId,
+		[]string{"chown", "root:root", "/root/.ssh/authorized_keys"},
+		cli)
+	fmt.Println("Renamed ro and changed ownership of /root/.ssh/authorized_keys")
 }
 
 // Copy the public SSH key from the Pod

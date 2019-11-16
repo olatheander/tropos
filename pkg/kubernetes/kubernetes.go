@@ -218,7 +218,7 @@ func PortForward(kube *args.Kubernetes,
 }
 
 // Exec execute the specified command in the Pod
-func Exec(command string, kube *args.Kubernetes, deployment *appsv1.Deployment, stdin io.Reader, stdout io.Writer, stderr io.Writer) (error) {
+func Exec(command string, kube *args.Kubernetes, deployment *appsv1.Deployment, stdin io.Reader, stdout io.Writer, stderr io.Writer) error {
 	config, err := clientcmd.BuildConfigFromFlags("", kube.Config)
 	if err != nil {
 		panic(err)

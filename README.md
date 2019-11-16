@@ -16,7 +16,7 @@ $ docker run -d --rm -v <src>:/workspace -v /home/olathe/.minikube:/home/olathe/
 
 The Tropos pod will mount the workspace mounted in the proxy container by the equivalent of 
 ```
-$ ssh username@server -i -R 10000:localmachine:22
+$ ssh username@server -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null -R 10000:localmachine:22
 $ sshfs -p 10000 localusername@127.0.0.1:/workspace /workspace 
 ```
 in order to establish a synchronisation of the workspace between the development host and the pod (via the proxy container), see e.g.
@@ -30,7 +30,7 @@ $ docker exec sshd chown root:root /root/.ssh/authorized_keys
 ```
 to the pod container in order to be able to SSH in (taken from https://github.com/rastasheep/ubuntu-sshd). SSH by
 ```
-$ ssh -i ~/.ssh/id_rsa root@localhost -p 2022
+$ ssh -i ~/.ssh/id_rsa -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null root@localhost -p 2022
 ```
 and possibly delete a cached key by `ssh-keygen -R [localhost]:2022`.
 
@@ -50,9 +50,9 @@ Set up port forwarding from the Tropos pod to the Tropos container:
 ```
 and then connect with SSH enabling remote forwarding over SSH and run `sshfs` mounting `/workspace` in the Tropos container:
 ```
-# ssh -i ~/.ssh/id_rsa root@localhost -p 2022 -R 10000:localhost:22
+# ssh -i ~/.ssh/id_rsa root@localhost -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null -p 2022 -R 10000:localhost:22
 # mkdir /workspace
-# sshfs -p 10000 -C root@127.0.0.1:/workspace /workspace
+# sshfs -o IdentityFile=/root/id_rsa -p 10000 -C root@127.0.0.1:/workspace /workspace
 ```
 Here `-p 10000` is the port number and `-C` enable compression. 
 
