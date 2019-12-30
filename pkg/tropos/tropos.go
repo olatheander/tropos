@@ -16,7 +16,6 @@ import (
 	"tropos/pkg/args"
 	"tropos/pkg/docker"
 	"tropos/pkg/kubernetes"
-	"tropos/pkg/ssh"
 )
 
 // Stage a new deployment and mount the workspace
@@ -89,32 +88,12 @@ func NewDeployment(context args.Context) error {
 			panic(err)
 		}
 
-		fmt.Println("Configuring SSH tunnels.")
-		setupSsh(&context.SSH)
-
 		fmt.Println("All set up. Carry on... (press Ctrl+C to exit).")
 		waitForCtrlC()
 		fmt.Println("Closing down and cleaning up.")
 	})
 
 	return nil
-}
-
-func setupSsh(sshConfig *args.SSH) error {
-	return ssh.NewSSHTunnel(sshConfig.User,
-		sshConfig.PrivateKeyPath,
-		&ssh.Endpoint{
-			Host: sshConfig.ServerEndpoint.Host,
-			Port: sshConfig.ServerEndpoint.Port,
-		},
-		&ssh.Endpoint{
-			Host: sshConfig.LocalEndpoint.Host,
-			Port: sshConfig.LocalEndpoint.Port,
-		},
-		&ssh.Endpoint{
-			Host: sshConfig.RemoteEndpoint.Host,
-			Port: sshConfig.RemoteEndpoint.Port,
-		})
 }
 
 func waitForCtrlC() {

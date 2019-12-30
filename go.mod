@@ -11,17 +11,19 @@ require (
 	github.com/docker/docker v1.13.1
 	github.com/docker/go-connections v0.4.0
 	github.com/docker/go-units v0.4.0 // indirect
-	github.com/gogo/protobuf v1.2.1 // indirect
+	github.com/fatih/color v1.7.0
 	github.com/googleapis/gnostic v0.3.0 // indirect
 	github.com/gorilla/mux v1.7.3 // indirect
 	github.com/imdario/mergo v0.3.7 // indirect
+	github.com/mattn/go-colorable v0.1.4 // indirect
+	github.com/mattn/go-isatty v0.0.11 // indirect
 	github.com/opencontainers/go-digest v1.0.0-rc1 // indirect
 	github.com/opencontainers/image-spec v1.0.1 // indirect
 	github.com/opencontainers/runc v0.1.1 // indirect
-	golang.org/x/crypto v0.0.0-20190308221718-c2843e01d9a2
+	github.com/spf13/cobra v0.0.6-0.20191202130430-b04b5bfc50cb
+	golang.org/x/crypto v0.0.0-20190418161225-b43e412143f9
 	golang.org/x/net v0.0.0-20190628185345-da137c7871d7 // indirect
-	golang.org/x/time v0.0.0-20190308202827-9d24e82272b4 // indirect
-	google.golang.org/grpc v1.22.0 // indirect
+	google.golang.org/grpc v1.25.1 // indirect
 	gotest.tools v2.2.0+incompatible // indirect
 	k8s.io/api v0.0.0-20190620084959-7cf5895f2711
 	k8s.io/apimachinery v0.0.0-20190612205821-1799e75a0719

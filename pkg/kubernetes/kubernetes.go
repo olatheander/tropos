@@ -35,14 +35,14 @@ func getDeployment(kube *args.Kubernetes) (*appsv1.Deployment, error) {
 
 	namespace := getNamespace(kube)
 	deploymentsClient := clientSet.AppsV1().Deployments(namespace)
-	return deploymentsClient.Get(kube.DeploymentName, metav1.GetOptions{})
+	return deploymentsClient.Get(kube.Deployment, metav1.GetOptions{})
 }
 
 //NewDeployment create a new deployment
 func NewDeployment(kube *args.Kubernetes) (*appsv1.Deployment, error) {
 	result, err := getDeployment(kube)
 	if err == nil {
-		fmt.Printf("Found existing deployment %s, reusing it.\n", kube.DeploymentName)
+		fmt.Printf("Found existing deployment %s, reusing it.\n", kube.Deployment)
 		return result, err
 	}
 
@@ -61,25 +61,25 @@ func NewDeployment(kube *args.Kubernetes) (*appsv1.Deployment, error) {
 
 	deployment := &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: kube.DeploymentName,
+			Name: kube.Deployment,
 		},
 		Spec: appsv1.DeploymentSpec{
 			Replicas: int32Ptr(1),
 			Selector: &metav1.LabelSelector{
 				MatchLabels: map[string]string{
-					"app": kube.DeploymentName,
+					"app": kube.Deployment,
 				},
 			},
 			Template: apiv1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Labels: map[string]string{
-						"app": kube.DeploymentName,
+						"app": kube.Deployment,
 					},
 				},
 				Spec: apiv1.PodSpec{
 					Containers: []apiv1.Container{
 						{
-							Name:  kube.DeploymentName,
+							Name:  kube.Deployment,
 							Image: kube.Image,
 							//ImagePullPolicy: apiv1.PullNever,	//TODO: remove, only added for Minikube development.
 							Ports: []apiv1.ContainerPort{
