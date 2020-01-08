@@ -16,18 +16,19 @@ const (
 )
 
 type Kubernetes struct {
+	Config        string
 	Context       string
 	Namespace     string
 	Deployment    string
 	Image         string
-	HostPort      uint16
+	HostPort      int32
 	ContainerName string
-	ContainerPort uint16
+	ContainerPort int32
 }
 
 type SSH struct {
-	User           string
-	PrivateKeyPath string
+	User         string
+	IdentityFile string
 }
 
 type Context struct {
@@ -78,9 +79,9 @@ func ParseArgs() (Context, error) {
 	c.SSH.User = DefaultSshUser
 	if runtime.GOOS == "windows" {
 		//TODO: Consider https://github.com/mitchellh/go-homedir for this.
-		c.SSH.PrivateKeyPath = filepath.Join(os.Getenv("HOME"), ".ssh", "id_rsa")
+		c.SSH.IdentityFile = filepath.Join(os.Getenv("HOME"), ".ssh", "id_rsa")
 	} else {
-		c.SSH.PrivateKeyPath = filepath.Join(os.Getenv("HOME"), ".ssh", "id_rsa")
+		c.SSH.IdentityFile = filepath.Join(os.Getenv("HOME"), ".ssh", "id_rsa")
 	}
 	return c, nil
 }

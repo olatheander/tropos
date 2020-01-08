@@ -35,7 +35,7 @@ func NewDeployment(context args.Context) error {
 		fmt.Println("Deleted deployment (", deployment.Name, ")")
 	}(deployment)
 
-	publicKeyPath := context.SSH.PrivateKeyPath + ".pub"
+	publicKeyPath := context.SSH.IdentityFile + ".pub"
 	if err != nil {
 		panic(err)
 	}
@@ -46,29 +46,29 @@ func NewDeployment(context args.Context) error {
 		panic(err)
 	}
 
-	err = generateSshKeysInPod(&context.Kubernetes, deployment)
-	if err != nil {
-		panic(err)
-	}
+	//err = generateSshKeysInPod(&context.Kubernetes, deployment)
+	//if err != nil {
+	//	panic(err)
+	//}
 
-	fmt.Println("Starting Docker container")
-	containerId, err := docker.CreateNewContainer(context.Docker.Image,
-		context.Docker.Workspace,
-		cli)
-	if err != nil {
-		panic(err)
-	}
-	fmt.Println("Started Docker container (ID:", containerId, ")")
-	defer func(containerId string, cli *client.Client) {
-		docker.CloseContainer(containerId, cli)
-		fmt.Println("Stopped and removed Docker container (ID:", containerId, ")")
-	}(containerId, cli)
+	//fmt.Println("Starting Docker container")
+	//containerId, err := docker.CreateNewContainer(context.Docker.Image,
+	//	context.Docker.Workspace,
+	//	cli)
+	//if err != nil {
+	//	panic(err)
+	//}
+	//fmt.Println("Started Docker container (ID:", containerId, ")")
+	//defer func(containerId string, cli *client.Client) {
+	//	docker.CloseContainer(containerId, cli)
+	//	fmt.Println("Stopped and removed Docker container (ID:", containerId, ")")
+	//}(containerId, cli)
 
 	// Make the workspace container trust the keys in the Pod
-	containerTrustPodKeys(&context.Kubernetes,
-		deployment,
-		containerId,
-		cli)
+	//containerTrustPodKeys(&context.Kubernetes,
+	//	deployment,
+	//	containerId,
+	//	cli)
 
 	portForward(&context.Kubernetes, deployment, func(stopChannel chan struct{}) {
 		defer close(stopChannel)

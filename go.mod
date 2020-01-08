@@ -1,6 +1,6 @@
 module tropos
 
-go 1.12
+go 1.13
 
 require (
 	github.com/Azure/go-ansiterm v0.0.0-20170929234023-d6e3b3328b78 // indirect
@@ -17,10 +17,12 @@ require (
 	github.com/imdario/mergo v0.3.7 // indirect
 	github.com/mattn/go-colorable v0.1.4 // indirect
 	github.com/mattn/go-isatty v0.0.11 // indirect
+	github.com/mitchellh/go-homedir v1.1.0
 	github.com/opencontainers/go-digest v1.0.0-rc1 // indirect
 	github.com/opencontainers/image-spec v1.0.1 // indirect
 	github.com/opencontainers/runc v0.1.1 // indirect
 	github.com/spf13/cobra v0.0.6-0.20191202130430-b04b5bfc50cb
+	github.com/spf13/viper v1.4.0
 	golang.org/x/crypto v0.0.0-20190418161225-b43e412143f9
 	golang.org/x/net v0.0.0-20190628185345-da137c7871d7 // indirect
 	google.golang.org/grpc v1.25.1 // indirect

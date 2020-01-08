@@ -89,14 +89,6 @@ func NewDeployment(kube *args.Kubernetes) (*appsv1.Deployment, error) {
 									ContainerPort: kube.ContainerPort,
 								},
 							},
-							SecurityContext: &apiv1.SecurityContext{
-								Privileged: newTrue(),
-								Capabilities: &apiv1.Capabilities{
-									Add: []apiv1.Capability{
-										"SYS_ADMIN",
-									},
-								},
-							},
 						},
 					},
 				},
@@ -278,7 +270,7 @@ func CopyFromPod(kube *args.Kubernetes, deployment *appsv1.Deployment) {
 }
 
 // Copy file or directory to Pod
-func CopyToPod(srcPath string, destPath string, kube *args.Kubernetes, deployment *appsv1.Deployment) (error) {
+func CopyToPod(srcPath string, destPath string, kube *args.Kubernetes, deployment *appsv1.Deployment) error {
 	reader, writer := io.Pipe()
 
 	//TODO: Look into using https://golang.org/pkg/archive/tar/ instead of tar tool.
