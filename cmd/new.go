@@ -17,6 +17,7 @@ package cmd
 
 import (
 	"github.com/docker/docker/pkg/homedir"
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"os"
 	"path/filepath"
@@ -114,6 +115,10 @@ func getDefaultK8sConfigPath() string {
 }
 
 func newMain(command *cobra.Command, arguments []string) error {
+	// Validate arguments.
+	if len(arguments) != 0 {
+		return errors.New("unexpected arguments provided")
+	}
 
 	//flags := command.Flags()
 	//

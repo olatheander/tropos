@@ -1,6 +1,12 @@
 # Tropos
 Cloud-native development on Kubernetes utilizing Visual Studio Code's Remote Development features
 
+## Mutagen
+To sync files using [Mutagen](https://github.com/mutagen-io/mutagen):
+```
+./mutagen sync create <src-path> root@localhost:<port>>:<dest-path>
+```
+
 ## Build proxy container
 ```
 $ docker build -t tropos-proxy -f docker/proxy/Dockerfile .
